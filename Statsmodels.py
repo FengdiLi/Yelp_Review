@@ -9,6 +9,16 @@ from sklearn import linear_model, naive_bayes
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
+
+from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
+import random
+
+random.seed(0)
+
+
+
+
 class LoadData:
     '''
     Load, classify and split data
@@ -51,33 +61,36 @@ def CleanText(string):
 
 
 ## Model
-def train_model(classifier, feature_vector_train, label, feature_vector_valid, valid_y):
+def train_model(classifier, feature_vector_train, label, feature_vector_valid, valid_y,f):
     """
     fit the training dataset on the classifier
     """
+    
     classifier.fit(feature_vector_train, label)
 
     # predictions
     predictions = classifier.predict(feature_vector_valid)
 
-    print(f'Test Accuracy:{accuracy_score(predictions, valid_y)}')
-    print(f'Test F1:{f1_score(predictions, valid_y)}')
+    print(f'Test Accuracy:{accuracy_score(predictions, valid_y)}',file=f)
+    print(f'Test F1:{f1_score(predictions, valid_y)}',file=f)
 
 
 def main(data_file, out_path):
+    
+    random.seed(0)
 
     # Load, classify and split data
     DF = LoadData(data_file, out_path, verbose=False)
 
-    # visualize the distribution of each class
-    ax = DF.data['class'].value_counts().plot(kind='bar',figsize=(14,8),
-                title="Number for Each Class (1 = high star, 0 = low star)")
-    ax.set_xlabel("Class")
-    ax.set_ylabel("Count")
-    plt.show()
+#    # visualize the distribution of each class
+#    ax = DF.data['class'].value_counts().plot(kind='bar',figsize=(14,8),
+#                title="Number for Each Class (1 = high star, 0 = low star)")
+#    ax.set_xlabel("Class")
+#    ax.set_ylabel("Count")
+#    plt.show()
 
     ## features
-
+    
     # 1. use word counts as features counter
     count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}', max_features=3000)
     count_vect.fit(DF.data['text'])
@@ -108,49 +121,100 @@ def main(data_file, out_path):
     xtrain_tfidf_ngram_chars = tfidf_vect_ngram_chars.transform(DF.train['text'])
     xvalid_tfidf_ngram_chars = tfidf_vect_ngram_chars.transform(DF.test['text'])
 
+
+
+    with open('result.txt','w') as f:  
+        
+    # ----------------------- Baseline: Decision Tree  ----------------------
+       
+    ## DT - on word count vector
+        print("\nDT - WordCount:",file=f)
+        train_model(tree.DecisionTreeClassifier(), xtrain_count, DF.train['class'], xvalid_count,
+                    DF.test['class'],f)
+    
+        ## DT - on word-level TF-IDF
+        print("\nDT - WordTF-IDF:",file=f)
+        train_model(tree.DecisionTreeClassifier(), xtrain_tfidf, DF.train['class'], xvalid_tfidf,
+                    DF.test['class'],f)
+    
+        ## DT - on ngram-level TF-IDF
+        print("\nDT - NgramTF-IDF:",file=f)
+        train_model(tree.DecisionTreeClassifier(), xtrain_tfidf_ngram, DF.train['class'],
+                               xvalid_tfidf_ngram, DF.test['class'],f)
+    
+        ## DT - on ngram-char-level TF-IDF
+        print("\nDT - NgramCharTF-IDF:",file=f)
+        train_model(tree.DecisionTreeClassifier(), xtrain_tfidf_ngram_chars, DF.train['class'],
+                               xvalid_tfidf_ngram_chars, DF.test['class'],f)
+   
+
     # ----------------------- Naive Bayes ---------------------------
 
-    ## Naive Bayes - on word count vector
-    print("NB - WordCount:")
-    train_model(naive_bayes.MultinomialNB(), xtrain_count, DF.train['class'], xvalid_count, DF.test['class'])
+        
+        ## Naive Bayes - on word count vector
+        print("\nNB - WordCount:",file=f)
+        train_model(naive_bayes.MultinomialNB(), xtrain_count, DF.train['class'], xvalid_count, DF.test['class'],f)
+    
+        ## Naive Bayes - on word-level TF-IDF
+        print("\nNB - WordTF-IDF:",file=f)
+        train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, DF.train['class'], xvalid_tfidf, DF.test['class'],f)
 
-    ## Naive Bayes - on word-level TF-IDF
-    print("NB - WordTF-IDF:")
-    train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, DF.train['class'], xvalid_tfidf, DF.test['class'])
+        ## Naive Bayes - on ngram-level TF-IDF
+        print("\nNB - NgramTF-IDF:",file=f)
+        train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram, DF.train['class'], xvalid_tfidf_ngram,
+                    DF.test['class'],f)
+    
+        ## Naive Bayes - on ngram-char-level TF-IDF
+        print("\nNB - NgramCharTF-IDF:",file=f)
+        train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram_chars, DF.train['class'],
+                               xvalid_tfidf_ngram_chars, DF.test['class'],f)
 
-    ## Naive Bayes - on ngram-level TF-IDF
-    print("NB - NgramTF-IDF:")
-    train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram, DF.train['class'], xvalid_tfidf_ngram,
-                DF.test['class'])
-
-    ## Naive Bayes - on ngram-char-level TF-IDF
-    print("NB - NgramCharTF-IDF:")
-    train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram_chars, DF.train['class'],
-                           xvalid_tfidf_ngram_chars, DF.test['class'])
-
-    # ----------------------- LogisticRegression ---------------------------
-
-    ## LR - on word count vector
-    print("LR - WordCount:")
-    train_model(linear_model.LogisticRegression(), xtrain_count, DF.train['class'], xvalid_count,
-                DF.test['class'])
-
-    ## LR - on word-level TF-IDF
-    print("LR - WordTF-IDF:")
-    train_model(linear_model.LogisticRegression(), xtrain_tfidf, DF.train['class'], xvalid_tfidf,
-                DF.test['class'])
-
-    ## LR - on ngram-level TF-IDF
-    print("LR - NgramTF-IDF:")
-    train_model(linear_model.LogisticRegression(), xtrain_tfidf_ngram, DF.train['class'],
-                           xvalid_tfidf_ngram, DF.test['class'])
-
-    ## LR - on ngram-char-level TF-IDF
-    print("LR - NgramCharTF-IDF:")
-    train_model(linear_model.LogisticRegression(), xtrain_tfidf_ngram_chars, DF.train['class'],
-                           xvalid_tfidf_ngram_chars, DF.test['class'])
-
-
+        # ----------------------- LogisticRegression ---------------------------
+    
+        ## LR - on word count vector
+        print("\nLR - WordCount:",file=f)
+        train_model(linear_model.LogisticRegression(), xtrain_count, DF.train['class'], xvalid_count,
+                    DF.test['class'],f)
+    
+        ## LR - on word-level TF-IDF
+        print("\nLR - WordTF-IDF:",file=f)
+        train_model(linear_model.LogisticRegression(), xtrain_tfidf, DF.train['class'], xvalid_tfidf,
+                    DF.test['class'],f)
+    
+        ## LR - on ngram-level TF-IDF
+        print("\nLR - NgramTF-IDF:",file=f)
+        train_model(linear_model.LogisticRegression(), xtrain_tfidf_ngram, DF.train['class'],
+                               xvalid_tfidf_ngram, DF.test['class'],f)
+    
+        ## LR - on ngram-char-level TF-IDF
+        print("\nLR - NgramCharTF-IDF:",file=f)
+        train_model(linear_model.LogisticRegression(), xtrain_tfidf_ngram_chars, DF.train['class'],
+                               xvalid_tfidf_ngram_chars, DF.test['class'],f)
+    
+    
+        # ----------------------- Random Forest  ---------------------------
+        
+        ## RF - on word count vector
+        print("\nRF - WordCount:",file=f)
+        train_model(RandomForestClassifier(), xtrain_count, DF.train['class'], xvalid_count,
+                    DF.test['class'],f)
+    
+        ## RF - on word-level TF-IDF
+        print("\nRF - WordTF-IDF:",file=f)
+        train_model(RandomForestClassifier(), xtrain_tfidf, DF.train['class'], xvalid_tfidf,
+                    DF.test['class'],f)
+    
+        ## RF - on ngram-level TF-IDF
+        print("\nRF - NgramTF-IDF:",file=f)
+        train_model(RandomForestClassifier(), xtrain_tfidf_ngram, DF.train['class'],
+                               xvalid_tfidf_ngram, DF.test['class'],f)
+    
+        ## RF - on ngram-char-level TF-IDF
+        print("\nRF - NgramCharTF-IDF:",file=f)
+        train_model(RandomForestClassifier(), xtrain_tfidf_ngram_chars, DF.train['class'],
+                               xvalid_tfidf_ngram_chars, DF.test['class'],f)
+    
+    
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
