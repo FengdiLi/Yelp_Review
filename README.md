@@ -17,6 +17,8 @@ The above step can be skipped simply by using the processed `business_reviews201
 
 Since is too large to upload on Github, please download the original file in *model* directory before testing the models.
 
+## DLmodels.py
+
 * Example
 
 `python DLmodels.py --data_file ../data/business_reviews2017.tsv --out_path ../data/business_reviews` 
