@@ -64,7 +64,7 @@ def Padding(data, max_len = 50):
     return pad_sequences(data, padding='post', truncating='post', maxlen = max_len)
 
 
-def WordEmbedding(X, y, embed_path='../model/GoogleNews-vectors-negative300.bin',
+def WordEmbedding(X, y, embed_path='model/GoogleNews-vectors-negative300.bin',
                   max_features = 3000, w2v_size = 300, max_len = 50):
     '''
     Create word embedding
@@ -209,7 +209,7 @@ def BiLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
 
 
 def Eval(X, y, name, model, verbose = True,
-         output_path='../model/'):
+         output_path='model/'):
     '''
     Model evaluation
     :param X: Test data input
@@ -258,10 +258,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_file", type=str,
-                        default="../data/business_reviews2017.tsv",
+                        default="data/business_reviews2017.tsv",
                         help="2017 Yelp Business Reviews tsv file")
     parser.add_argument("--out_path", type=str,
-                        default="../data/business_reviews",
+                        default="data/business_reviews",
                         help="Dir to write train/test data")
 
     args = parser.parse_args()

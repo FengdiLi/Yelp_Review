@@ -7,7 +7,7 @@ We convert it from json file to tsv file, split data into pieces by year, and fi
 
 Since is too large to upload on Github, please download the original data file in *data* directory before running the following scripts.
 ```{bash}
-$ ls ./data/*201*json | xargs -n 1 -I{} bash -c "python json2tsv.py --json={}"
+$ ls data/*201*json | xargs -n 1 -I{} bash -c "python scripts/json2tsv.py --json={}"
 $ cat scripts/years.txt | xargs -I{} bash -c "bash scripts/split_json.sh {}"
 ```
 The above step can be skipped simply by using the processed `business_reviews2017.tsv` in *data* directory.
@@ -17,13 +17,28 @@ The above step can be skipped simply by using the processed `business_reviews201
 
 Since is too large to upload on Github, please download the original file in *model* directory before testing the models.
 
+## Machine Learning Models
+
+* Naive Bayes Model
+* Logistic Regression Model
+
+Features
+
+* Bag of words
+* Word level TF-IDF
+* Character level TF-IDF
+
+Example
+
+`python Statsmodels.py --data_file data/business_reviews2017.tsv --out_path data/business_reviews`
+
 ## Deep Learning Models
 
 LSTM model, CNN and LSTM combined model, CNN and Bidirectional LSTM model.
 
-* Example
+Example
 
-`python DLmodels.py --data_file ../data/business_reviews2017.tsv --out_path ../data/business_reviews` 
+`python DLmodels.py --data_file data/business_reviews2017.tsv --out_path data/business_reviews`
 
 
 ## Model Performance on Test Dataset

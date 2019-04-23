@@ -3,14 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
-from gensim.models import KeyedVectors
 import re
-from keras.preprocessing.sequence import pad_sequences
-from keras.models import Sequential
-from keras.preprocessing import text
-from keras.layers import Dense, Dropout, Activation, Embedding, LSTM, Conv1D, MaxPooling1D, Bidirectional
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn import model_selection, preprocessing, linear_model, naive_bayes
+from sklearn import linear_model, naive_bayes
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
@@ -56,7 +51,7 @@ def CleanText(string):
 
 
 ## Model
-def train_model(classifier, feature_vector_train, label, feature_vector_valid, valid_y, is_neural_net=False):
+def train_model(classifier, feature_vector_train, label, feature_vector_valid, valid_y):
     """
     fit the training dataset on the classifier
     """
@@ -64,9 +59,6 @@ def train_model(classifier, feature_vector_train, label, feature_vector_valid, v
 
     # predictions
     predictions = classifier.predict(feature_vector_valid)
-
-    if is_neural_net:
-        predictions = predictions.argmax(axis=-1)
 
     print(f'Test Accuracy:{accuracy_score(predictions, valid_y)}')
     print(f'Test F1:{f1_score(predictions, valid_y)}')
@@ -76,6 +68,13 @@ def main(data_file, out_path):
 
     # Load, classify and split data
     DF = LoadData(data_file, out_path, verbose=False)
+
+    # visualize the distribution of each class
+    ax = DF.data['class'].value_counts().plot(kind='bar',figsize=(14,8),
+                title="Number for Each Class (1 = high star, 0 = low star)")
+    ax.set_xlabel("Class")
+    ax.set_ylabel("Count")
+    plt.show()
 
     ## features
 
@@ -156,10 +155,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_file", type=str,
-                        default="../data/business_reviews2017.tsv",
+                        default="data/business_reviews2017.tsv",
                         help="2017 Yelp Business Reviews tsv file")
     parser.add_argument("--out_path", type=str,
-                        default="../data/business_reviews",
+                        default="data/business_reviews",
                         help="Dir to write train/test data")
 
     args = parser.parse_args()
