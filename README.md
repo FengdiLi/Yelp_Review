@@ -28,6 +28,54 @@ LSTM model, CNN and LSTM combined model, CNN and Bidirectional LSTM model.
 
 ## Model Performance on Test Dataset
 
+* Naive Bayes Model - WordCount:
+
+Accuracy: 0.756
+
+F1: 0.746
+
+* Naive Bayes Model - Word TF-IDF:
+
+Accuracy:0.754
+
+F1:0.726
+
+* Naive Bayes Model - Ngram TF-IDF:
+
+Accuracy:0.736
+
+F1:0.710
+
+* Naive Bayes Model - Ngram CharTF-IDF:
+
+Accuracy:0.736
+
+F1:0.688
+
+* Logistic Regression - WordCount:
+
+Accuracy:0.759
+
+F1:0.733
+
+* Logistic Regression - Word TF-IDF:
+
+Accuracy:0.773
+
+F1:0.751
+
+* Logistic Regression - Ngram TF-IDF:
+
+Accuracy:0.750
+
+F1:0.727
+
+* Logistic Regression - Ngram CharTF-IDF:
+
+Accuracy:0.766
+
+F1:0.742
+
 * LSTM Model
 
 Accuracy:0.624
