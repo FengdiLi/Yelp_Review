@@ -10,7 +10,6 @@ from keras.models import Sequential
 from keras.preprocessing import text
 from keras.layers import Dense, Dropout, Activation, Embedding, LSTM, Conv1D, MaxPooling1D, Bidirectional, GlobalMaxPooling1D
 from sklearn.metrics import accuracy_score, f1_score
-# from keras.models import load_model
 
 
 def CleanText(string):
@@ -35,12 +34,13 @@ def CleanText(string):
 
 class LoadData:
 
-    def __init__(self, data_file, out_path, embed_path):
+    def __init__(self, data_file, embed_path):
         self.data = pd.read_csv(data_file, sep='\t', index_col=0)
         # assign review samples to two classes using [0,4) and [4, 5] criteria
         self.data['class'] = (self.data['stars'] >= 4).astype(int)
         self.data = self.data[['text', 'class']]
         self.data['text'] = self.data['text'].apply(CleanText)
+        self.embed_path = embed_path
 
     def WordEmbedding(self, max_len, max_features=3000, w2v_size=300):
 
@@ -54,7 +54,7 @@ class LoadData:
         self.y = self.data['class']
         del self.data
         # load google news pre-trained model
-        w2v_model = KeyedVectors.load_word2vec_format(embed_path, binary=True)
+        w2v_model = KeyedVectors.load_word2vec_format(self.embed_path, binary=True)
         # vectorizization & padding
         # dictionary vector matrix
         w2v_matrix = np.zeros((len(word_index) + 1, w2v_size))
@@ -75,7 +75,7 @@ class LoadData:
 
 
 def Eval(X, y, name, model, verbose=True,
-         output_path='/content/drive/Team Drives/ANLY-521 Final/model/'):
+         output_path='..model/'):
     '''
     Model evaluation
     :param X: Test data input
@@ -190,7 +190,7 @@ def BiLSTM(X, y, w2v_emb, dropout=0.2,
     model = Sequential()
     model.add(w2v_emb)
     model.add(Bidirectional(LSTM(128, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)))
-    model.add(Conv1D(64, 5, padding = 'valid', kernel_initializer = "glorot_uniform"))
+    model.add(Conv1D(64, 5, activation='relu'))
     model.add(GlobalMaxPooling1D())
     model.add(Dense(32, activation='relu'))
     model.add(Dropout(dropout))
@@ -222,10 +222,10 @@ def Eval(X_test, y_test, name, model, verbose = True,
         model.save(f'{output_path}{name}.h5')
 
 
-def main(data_file, out_path, embed_path):
+def main(data_file, embed_path):
 
     # Load, classify and split data
-    DF = LoadData(data_file, out_path, embed_path)
+    DF = LoadData(data_file, embed_path)
     DF.Load(max_len=200)
 
     # visualize the distribution of each class
@@ -238,8 +238,8 @@ def main(data_file, out_path, embed_path):
 
     # model training
     LSTM_model = base_LSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 8)
-    CNNLSTM_model = CNNLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 3)
-    biLSTM_model = BiLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 3)
+    CNNLSTM_model = CNNLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 4)
+    biLSTM_model = BiLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 4)
 
     # model performance on test data
     Eval(DF.test_X, DF.test_y, 'LSTM', LSTM_model, verbose=False)
@@ -253,13 +253,11 @@ if __name__ == "__main__":
     parser.add_argument("--data_file", type=str,
                         default="data/business_reviews2017.tsv",
                         help="2017 Yelp Business Reviews tsv file")
-    parser.add_argument("--out_path", type=str,
-                        default="data/business_reviews",
-                        help="Dir to write train/test data")
+
     parser.add_argument("--embed_path", type=str,
                         default="model/GoogleNews-vectors-negative300.bin",
                         help="Google News Pre-trained Word2Vec Model")
 
     args = parser.parse_args()
 
-    main(args.data_file, args.out_path, args.embed_path)
+    main(args.data_file, args.embed_path)
