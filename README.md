@@ -19,14 +19,17 @@ Since is too large to upload on Github, please download the original file in *mo
 
 ## Machine Learning Models
 
-* Naive Bayes Model
-* Logistic Regression Model
+* Decision Tree
+* Random Forests
+* Naive Bayes
+* Logistic Regression
 
 Features
 
 * Bag of words
-* Word level TF-IDF
-* Character level TF-IDF
+* Word TF-IDF
+* N-gram Word level TF-IDF
+* N-gram Character level TF-IDF
 
 Example
 
