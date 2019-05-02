@@ -2,15 +2,15 @@
 
 
 ## Data:
-`yelp_academic\_dataset\_review.json` could be found [here](https://www.yelp.com/dataset). 
-We convert it from json file to tsv file, split data into pieces by year, and filter business reviews published in 2017 as our data resource for this project.
+`yelp_academic_dataset_business.json` and `yelp_academic_dataset_review.json` could be found [here](https://www.kaggle.com/yelp-dataset/yelp-dataset). 
+We convert them from json file to tsv file, split data into pieces by year, filter business reviews published in 2017, and downsize to 40% of the data size as our data resource for this project.
 
 Since is too large to upload on Github, please download the original data file in *data* directory before running the following scripts.
 ```{bash}
-$ ls data/*201*json | xargs -n 1 -I{} bash -c "python scripts/json2tsv.py --json={}"
 $ cat scripts/years.txt | xargs -I{} bash -c "bash scripts/split_json.sh {}"
+$ ls data/*201*json | xargs -n 1 -I{} bash -c "python scripts/json2tsv.py --json={}"
 ```
-The above step can be skipped simply by using the processed `business_reviews2017.tsv` in *data* directory.
+To save the data downloading and converting time, the above step can be skipped by using the processed `business_reviews2017.tsv` ultimate file uploaded in *data* directory.
 
 ## Word2Vec
 `GoogleNews-vectors-negative300.bin` could be found [here](https://code.google.com/archive/p/word2vec/).
@@ -37,11 +37,11 @@ Example
 
 ## Deep Learning Models
 
-LSTM model, CNN and LSTM combined model, CNN and Bidirectional LSTM model.
+LSTM model, CNN and LSTM combined model, Bidirectional LSTM and CNN combined model.
 
 Example
 
-`python DLmodels.py --data_file data/business_reviews2017.tsv --out_path data/business_reviews`
+`python DLmodels.py --data_file data/business_reviews2017.tsv --embed_path model/GoogleNews-vectors-negative300.bin`
 
 
 ## Model Performance on Test Dataset
