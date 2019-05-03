@@ -8,35 +8,13 @@ import re
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.preprocessing import text
-from keras.layers import Dense, Dropout, Activation, Embedding, LSTM, Conv1D, MaxPooling1D, Bidirectional
+from keras.layers import Dense, Dropout, Activation, Embedding, LSTM, Conv1D, MaxPooling1D, Bidirectional, GlobalMaxPooling1D
 from sklearn.metrics import accuracy_score, f1_score
-# from keras.models import load_model
-
-
-class LoadData:
-    '''
-    Load, classify and split data
-    '''
-    def __init__(self, data_file, out_path, verbose=True):
-        self.data = pd.read_csv(data_file, sep = '\t', index_col = 0)
-        # assign review samples to two classes using [0,4) and [4, 5] criteria
-        self.data['class'] = (self.data['stars'] >= 4).astype(int)
-        self.data = self.data[['text', 'class']]
-        self.data['text'] = self.data['text'].apply(CleanText)
-        np.random.seed(1)
-        self.train, self.test = train_test_split(self.data, train_size=0.7)
-        # optional file saving
-        if verbose:
-            self.data.to_csv(out_path + '.tsv', sep='\t', index=False)
-            self.train.to_csv(out_path+'_train.tsv', sep='\t', index=False)
-            self.test.to_csv(out_path+'_test.tsv', sep='\t', index=False)
 
 
 def CleanText(string):
     '''
-    String cleaning
-    :param string:
-    :return: Cleaned review text
+    String cleaning.
     '''
     string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
     string = re.sub(r" \'s", "\'s", string)
@@ -54,49 +32,70 @@ def CleanText(string):
     return string
 
 
-def Padding(data, max_len = 50):
-    '''
-    Padding vector to specified length
-    :param data: Text input
-    :param max_len: Padding length
-    :return: Padded vector
-    '''
-    return pad_sequences(data, padding='post', truncating='post', maxlen = max_len)
+class LoadData:
+
+    def __init__(self, data_file, embed_path):
+        self.data = pd.read_csv(data_file, sep='\t', index_col=0)
+        # assign review samples to two classes using [0,4) and [4, 5] criteria
+        self.data['class'] = (self.data['stars'] >= 4).astype(int)
+        self.data = self.data[['text', 'class']]
+        self.data['text'] = self.data['text'].apply(CleanText)
+        self.embed_path = embed_path
+
+    def WordEmbedding(self, max_len, max_features=3000, w2v_size=300):
+
+        # tokenization
+        tk = text.Tokenizer(num_words=max_features, filters='"#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n',
+                            split=" ")
+        tk.fit_on_texts(self.data['text'])
+        word_index = tk.word_index
+        self.X = pad_sequences(tk.texts_to_sequences(self.data['text']), 200,
+                               padding='post', truncating='post')
+        self.y = self.data['class']
+        del self.data
+        # load google news pre-trained model
+        w2v_model = KeyedVectors.load_word2vec_format(self.embed_path, binary=True)
+        # vectorizization & padding
+        # dictionary vector matrix
+        w2v_matrix = np.zeros((len(word_index) + 1, w2v_size))
+        for word, i in word_index.items():
+            if word in w2v_model.vocab:
+                w2v_matrix[i] = w2v_model[word]
+        # embedding
+        w2v_emb = Embedding(len(word_index) + 1, w2v_size, weights=[w2v_matrix],
+                            input_length=max_len, trainable=False)
+        return tk, w2v_emb
+
+    def Load(self, max_len):
+
+        self.tk, self.w2v_emb = self.WordEmbedding(max_len)
+        np.random.seed(1)
+        self.train_X, self.test_X, self.train_y, self.test_y = train_test_split(self.X, self.y, train_size=0.7)
+        del self.X, self.y
 
 
-def WordEmbedding(X, y, embed_path='model/GoogleNews-vectors-negative300.bin',
-                  max_features = 3000, w2v_size = 300, max_len = 50):
+def Eval(X, y, name, model, verbose=True,
+         output_path='..model/'):
     '''
-    Create word embedding
-    :param X: train data input
-    :param y: train data label
-    :param embed_path: Path to pre-trained word2vec model
-    :param max_features: Maximum number of features
-    :param w2v_size: Word2vec size
-    :param max_len: text padding length
-    :return: Processed training data input and label, tokenizer, word embedding
+    Model evaluation
+    :param X: Test data input
+    :param y: Test data label
+    :param model: Model
+    :param tk: Tokenizer
+    :param max_len: Padding maximum length
+    :return: Accuracy and F1 scores
     '''
-    # tokenization & vectorizization
-    tk = text.Tokenizer(num_words=max_features, filters='"#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n',
-                        split=" ")
-    tk.fit_on_texts(X)
-    word_index = tk.word_index
-    # padding
-    X_train = Padding(tk.texts_to_sequences(X), max_len)
-    y_train = y
-    # load google news pre-trained model
-    w2v_model = KeyedVectors.load_word2vec_format(embed_path, binary=True)
-    # Create word embedding vector matrix using pre-trained model
-    w2v_matrix = np.zeros((len(word_index) + 1, w2v_size))
-    for word,i in word_index.items():
-        if word in w2v_model.vocab:
-            w2v_matrix[i] = w2v_model[word]
-    w2v_emb = Embedding(len(word_index)+1, w2v_size, weights=[w2v_matrix],
-                            input_length=max_len)
-    return X_train, y_train, tk, w2v_emb
+    print(f'{name} Model')
+    X_test = X
+    y_test = y
+    y_pred = model.predict_classes(X_test)
+    print(f'Test Accuracy:{accuracy_score(y_test, y_pred)}')
+    print(f'Test F1:{f1_score(y_test, y_pred)}')
+    if verbose:
+        model.save(f'{output_path}{name}.h5')
 
 
-def base_LSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
+def base_LSTM(X, y, w2v_emb, dropout=0.2,
               loss='binary_crossentropy', optimizer='adam',
               batch_size=128, nb_epoch=10, validation_split=0.2,
               shuffle=True):
@@ -117,11 +116,10 @@ def base_LSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     '''
     model = Sequential()
     model.add(w2v_emb)
-    model.add(LSTM(output_size))
+    model.add(LSTM(64))
     model.add(Dropout(dropout))
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
-    model.layers[1].trainable = False
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['accuracy'])
@@ -132,7 +130,7 @@ def base_LSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     return model
 
 
-def CNNLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
+def CNNLSTM(X, y, w2v_emb, dropout=0.2,
             loss='binary_crossentropy', optimizer='adam',
             batch_size=128, nb_epoch=10, validation_split=0.2,
             shuffle=True):
@@ -153,13 +151,13 @@ def CNNLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     '''
     model = Sequential()
     model.add(w2v_emb)
-    model.add(Conv1D(64, 5, activation='relu'))
-    model.add(Dropout(dropout))
+    model.add(Conv1D(128, 5, activation='relu'))
     model.add(MaxPooling1D(pool_size=4))
-    model.add(LSTM(output_size))
+    model.add(LSTM(64, dropout=0.1, recurrent_dropout=0.1))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(dropout))
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
-    model.layers[1].trainable = False
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['accuracy'])
@@ -170,7 +168,7 @@ def CNNLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     return model
 
 
-def BiLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
+def BiLSTM(X, y, w2v_emb, dropout=0.2,
            loss='binary_crossentropy', optimizer='adam',
            batch_size=128, nb_epoch=10, validation_split=0.2,
            shuffle=True):
@@ -191,13 +189,12 @@ def BiLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     '''
     model = Sequential()
     model.add(w2v_emb)
+    model.add(Bidirectional(LSTM(128, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)))
     model.add(Conv1D(64, 5, activation='relu'))
+    model.add(GlobalMaxPooling1D())
+    model.add(Dense(32, activation='relu'))
     model.add(Dropout(dropout))
-    model.add(MaxPooling1D(pool_size=4))
-    model.add(Bidirectional(LSTM(output_size)))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
-    model.layers[1].trainable = False
+    model.add(Dense(1, activation="sigmoid"))
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['accuracy'])
@@ -208,7 +205,7 @@ def BiLSTM(X, y, w2v_emb, output_size=100, dropout=0.2,
     return model
 
 
-def Eval(X, y, name, model, verbose = True,
+def Eval(X_test, y_test, name, model, verbose = True,
          output_path='model/'):
     '''
     Model evaluation
@@ -218,8 +215,6 @@ def Eval(X, y, name, model, verbose = True,
     :return: Accuracy and F1 scores
     '''
     print(f'{name} Model')
-    X_test = X
-    y_test = y
     y_pred = model.predict_classes(X_test)
     print(f'Test Accuracy:{accuracy_score(y_test, y_pred)}')
     print(f'Test F1:{f1_score(y_test, y_pred)}')
@@ -227,31 +222,29 @@ def Eval(X, y, name, model, verbose = True,
         model.save(f'{output_path}{name}.h5')
 
 
-def main(data_file, out_path):
+def main(data_file, embed_path):
 
     # Load, classify and split data
-    DF = LoadData(data_file, out_path, verbose=False)
+    DF = LoadData(data_file, embed_path)
+    DF.Load(max_len=200)
 
     # visualize the distribution of each class
-    ax = DF.data['class'].value_counts().plot(kind='bar',figsize=(14,8),
-                title="Number for Each Class (1 = high star, 0 = low star)")
+    ax = DF.train_y.value_counts().plot(kind='bar', figsize=(14, 8),
+                                        title="Number for Each Class (1 = high star, 0 = low star)")
     ax.set_xlabel("Class")
     ax.set_ylabel("Count")
     plt.show()
 
-    # data pre-processing
-    X_train, y_train, tk, w2v_emb = WordEmbedding(DF.train['text'], DF.train['class'], max_len = 100)
 
     # model training
-    LSTM_model = base_LSTM(X_train, y_train, w2v_emb, output_size = 64)
-    CNNLSTM_model = CNNLSTM(X_train, y_train, w2v_emb, output_size = 64, nb_epoch = 3)
-    biLSTM_model = BiLSTM(X_train, y_train, w2v_emb, output_size = 64, nb_epoch=3)
+    LSTM_model = base_LSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 8)
+    CNNLSTM_model = CNNLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 4)
+    biLSTM_model = BiLSTM(DF.train_X, DF.train_y, DF.w2v_emb, nb_epoch = 4)
 
     # model performance on test data
-    X_test = Padding(tk.texts_to_sequences(DF.test['text']), max_len = 100)
-    Eval(X_test, DF.test['class'], 'LSTM', LSTM_model, verbose=False)
-    Eval(X_test, DF.test['class'], 'CNN + LSTM', CNNLSTM_model, verbose=False)
-    Eval(X_test, DF.test['class'], 'CNN + Bidirectional LSTM', biLSTM_model, verbose=False)
+    Eval(DF.test_X, DF.test_y, 'LSTM', LSTM_model, verbose=False)
+    Eval(DF.test_X, DF.test_y, 'CNN + LSTM', CNNLSTM_model, verbose=False)
+    Eval(DF.test_X, DF.test_y, 'CNN + Bidirectional LSTM', biLSTM_model, verbose=False)
 
 
 if __name__ == "__main__":
@@ -260,10 +253,11 @@ if __name__ == "__main__":
     parser.add_argument("--data_file", type=str,
                         default="data/business_reviews2017.tsv",
                         help="2017 Yelp Business Reviews tsv file")
-    parser.add_argument("--out_path", type=str,
-                        default="data/business_reviews",
-                        help="Dir to write train/test data")
+
+    parser.add_argument("--embed_path", type=str,
+                        default="model/GoogleNews-vectors-negative300.bin",
+                        help="Google News Pre-trained Word2Vec Model")
 
     args = parser.parse_args()
 
-    main(args.data_file, args.out_path)
+    main(args.data_file, args.embed_path)
