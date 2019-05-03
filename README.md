@@ -12,14 +12,16 @@ Since is too large to upload on Github, please download the original data file i
 $ cat scripts/years.txt | xargs -I{} bash -c "bash scripts/split_json.sh {}"
 $ ls data/*201*json | xargs -n 1 -I{} bash -c "python scripts/json2tsv.py --json={}"
 ```
-`ImportReview.sql`, `created_yelp_database.sql` and `combine_business_review.py` will then be implemented to build our processed dataset `business_reviews2017.tsv` in *data* directory. (NOTE: To save the data downloading and converting time, the above step can be skipped by using `business_reviews2017.tsv` uploaded in *data* directory.)
+`ImportReview.sql`, `created_yelp_database.sql` and `combine_business_review.py` will then be implemented to build our processed dataset `business_reviews2017.tsv` in *data* directory.
+##### NOTE: 
+To save the data downloading and converting time, the above steps can be skipped by using `business_reviews2017.tsv` uploaded in *data* directory, and all the following modeling and evaluation steps are using this file as well.
 
 ## Word2Vec
 `GoogleNews-vectors-negative300.bin` could be found [here](https://code.google.com/archive/p/word2vec/).
 
 Since is too large to upload on Github, please download the original file in *model* directory before testing the models.
 
-## Machine Learning Models
+## Machine Learning Models `Statsmodels.py`
 
 Several supervised machine learning classifiers will be build on the training data (70%):
 * Decision Tree
@@ -37,7 +39,7 @@ Example:
 
 `python Statsmodels.py --data_file data/business_reviews2017.tsv --out_path data/business_reviews`
 
-## Deep Learning Models
+## Deep Learning Models `DLmodels.py`
 
 We chosen common deep learning networks such LSTM and CNN to create three text classification architectures training on 70% of our data: 
 * LSTM baseline model
